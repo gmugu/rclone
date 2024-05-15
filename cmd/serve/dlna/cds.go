@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/upnp"
@@ -226,6 +227,8 @@ func (cds *contentDirectoryService) objectFromID(id string) (o object, err error
 	return
 }
 
+var _OnLastHandleGetSearchCapabilitiesTime int64 = 0
+
 func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *http.Request) (map[string]string, error) {
 	host := r.Host
 
@@ -249,9 +252,13 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 		}
 		switch browse.BrowseFlag {
 		case "BrowseDirectChildren":
-			objs, err := cds.readContainer(obj, host)
-			if err != nil {
-				return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
+			var objs []interface{}
+			if time.Now().UnixMilli()-_OnLastHandleGetSearchCapabilitiesTime >= 8000 {
+				var err error
+				objs, err = cds.readContainer(obj, host)
+				if err != nil {
+					return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
+				}
 			}
 			totalMatches := len(objs)
 			objs = objs[func() (low int) {
@@ -295,6 +302,7 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 			return nil, upnp.Errorf(upnp.ArgumentValueInvalidErrorCode, "unhandled browse flag: %v", browse.BrowseFlag)
 		}
 	case "GetSearchCapabilities":
+		_OnLastHandleGetSearchCapabilitiesTime = time.Now().UnixMilli()
 		return map[string]string{
 			"SearchCaps": "",
 		}, nil
