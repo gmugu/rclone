@@ -253,13 +253,17 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 		switch browse.BrowseFlag {
 		case "BrowseDirectChildren":
 			var objs []interface{}
-			if time.Now().UnixMilli()-_OnLastHandleGetSearchCapabilitiesTime >= 8000 {
+			if _OnLastHandleGetSearchCapabilitiesTime == 0 || time.Now().UnixMilli()-_OnLastHandleGetSearchCapabilitiesTime >= 8000 { //正常读取目录
 				var err error
 				objs, err = cds.readContainer(obj, host)
 				if err != nil {
 					return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 				}
+			} else { //返回空文件夹
+				fs.Logf(cds, "识别到webos tv开始扫盘, 返回空文件夹")
 			}
+			_OnLastHandleGetSearchCapabilitiesTime = 0
+
 			totalMatches := len(objs)
 			objs = objs[func() (low int) {
 				low = browse.StartingIndex
